@@ -1,0 +1,8 @@
+{
+    "action": "service_refresh",
+    "service_id": "801",
+    "proto": "TCP",
+    "port": "62201",
+    "nat_ip": "192.168.4.44",
+    "nat_port": "22"
+}
