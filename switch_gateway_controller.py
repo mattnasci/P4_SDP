@@ -180,7 +180,7 @@ def main(p4info_file_path, bmv2_file_path):
     # gateway switch definition
     gw_s = p4runtime_lib.bmv2.Bmv2SwitchConnection(
             name='gateway_switch',
-            address='192.168.1.1:50051',
+            address='0.0.0.0:50051',
             device_id=0,
             proto_dump_file='switch_log.txt')
             
@@ -189,7 +189,7 @@ def main(p4info_file_path, bmv2_file_path):
     # Install the P4 program on the switch
     gw_s.SetForwardingPipelineConfig(p4info=p4info_helper.p4info,
                                        bmv2_json_file_path=bmv2_file_path)
-    print "Installed P4 Program using SetForwardingPipelineConfig on s1"
+    print "Installed P4 Program using SetForwardingPipelineConfig on gw_s"
     
     # Writing startup table rules
     writeFirewallRules(p4info_helper, sw=gw_s, egress_port=0, dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
