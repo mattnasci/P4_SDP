@@ -166,10 +166,10 @@ def main():
     
     # gateway switch definition
     sh.setup(
-    device_id=1,
-    grpc_addr='0.0.0.0:50051',
-    election_id=(0, 1), # (high, low)
-    config=sh.FwdPipeConfig('build/switch.p4.p4info.txt', 'build/switch.json')
+        device_id=1,
+        grpc_addr='0.0.0.0:50051',
+        election_id=(0, 1), # (high, low)
+        config=sh.FwdPipeConfig('build/switch.p4.p4info.txt', 'build/switch.json')
     )
 
     # print "switch defined and configured"
