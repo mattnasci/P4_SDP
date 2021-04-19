@@ -9,11 +9,7 @@ from hashlib import sha256
 from Crypto.Util.Padding import unpad
 from Crypto.Cipher import AES
 
-sys.path.append(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                 '../../utils/'))
-import p4runtime_lib.bmv2
-import p4runtime_lib.helper
+import p4runtime_sh.shell as sh
 
 services=[]
 access_list=[]
