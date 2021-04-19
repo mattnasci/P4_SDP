@@ -1,8 +1,0 @@
-{
-    "sdp_id":"2054",                                       
-    "source": "ANY",
-    "service_list": "801",                                        
-    "open_ports": "22",
-    "spa_encryption_key_base64": "VPRh2KUTY4XPH4F2Ni0CEBG+8+vRzya1k5MHyvsLKa4=",
-    "spa_hmac_key_base64": "L4uVLSGT9N7SCR11MmY+En9z0TGaP4mU3t2y+vh2LIhqoL/xPYRgxJTnp+6hm4frCorSj96VFQevbGu5lHECQD85OOcFBldfiKF91DELEcO9BWJ+TH6ain7hTKf/6BNurN1dyxZEfV6sufbhiLurwpFlKK5rj73sdl1iewQHy/c="
-}
