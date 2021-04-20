@@ -73,15 +73,15 @@ def parse_service_json():
     # extracting JSON for gateway service
     with open("services.json", "r") as sj:
         s_json = json.load(sj)
-        print "Loaded this new service json: "
-        print s_json
+        print("Loaded this new service json: ")
+        print(s_json)
         curr_s_id = int(s_json.get(u'service_id'))
         curr_proto = s_json.get(u'proto')
         curr_port = s_json.get(u'port')
         curr_nat_ip = s_json.get(u'nat_ip')
         curr_nat_port = s_json.get(u'nat_port')
         services.append(service(curr_s_id, curr_proto, curr_port, curr_nat_ip, curr_nat_port))
-        print "added service id ", services[0].service_id, " to the services list"
+        print("added service id " + str(services[0].service_id) + " to the services list")
 
 def parse_access_json():
 
@@ -89,16 +89,16 @@ def parse_access_json():
     
     with open("access_3.json", "r") as aj:
         a_json = json.load(aj)
-        print "Loaded this new access json: "
-        print a_json
+        print("Loaded this new access json: ")
+        print(a_json)
         curr_sdp_id = int(a_json.get(u'sdp_id'))
         curr_s_list = a_json.get(u'service_list')
-        print curr_s_list
+        print(curr_s_list)
         curr_ports = a_json.get(u'open_ports')
         curr_enc_key = a_json.get(u'spa_encryption_key_base64')
         curr_hmac_key = a_json.get(u'spa_hmac_key_base64')
         access_list.append(access(curr_sdp_id, curr_s_list, curr_ports, curr_enc_key, curr_hmac_key))
-        print "added access for sdp id ", access_list[0].sdp_id, " to the service/s ", access_list[0].service_list, " w.r.t. this/these port/s ", access_list[0].open_ports
+        print("added access for sdp id " + str(access_list[0].sdp_id) + " to the service/s " + str(access_list[0].service_list) + " w.r.t. this/these port/s " + str(access_list[0].open_ports))
         
 def constant_runtime_cmp(a, b, len):
 
@@ -122,7 +122,8 @@ def is_base64(buf, len):
 
     for i in range(len):
     
-        if not (buf[i].isalnum() or buf[i] == '/' or buf[i] == '+' or buf[i] == '='):
+        # print((buf[i:i+1]))
+        if not (buf[i:i+1].isalnum() or buf[i:i+1].decode() == '/' or buf[i:i+1].decode() == '+' or buf[i:i+1].decode() == '='):
         
             rv = 0
             break
