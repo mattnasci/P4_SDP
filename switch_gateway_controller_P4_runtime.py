@@ -335,25 +335,25 @@ def parse_spa_packet(spa_message, source, destination):
 def main():
     print("main execution")
     
-    # gateway switch definition
+     # gateway switch definition
     sh.setup(
-        device_id=1,
-        grpc_addr='0.0.0.0:50051',
+        device_id=0,
+        grpc_addr='127.0.0.1:50051',
         election_id=(0, 1), # (high, low)
-        config=sh.FwdPipeConfig('build/switch.p4.p4info.txt', 'build/switch.json')
+        config=sh.FwdPipeConfig('/home/switchp4/Desktop/TEST/build/p4info.txt', '/home/switchp4/Desktop/TEST/build/switch.json')
     )
 
-    print("switch defined and configured")
+    # print "switch defined and configured"
     
     # Writing startup table rules
     
-    writeFirewallRules(egress_port=0, dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
+    writeFirewallRules(egress_port="0", dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
     
-    writeFirewallRules(egress_port=1, dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.2.22")
+    writeFirewallRules(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.2.22")
     
-    writeFirewallRules(egress_port=1, dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.4.44")
+    writeFirewallRules(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.4.44")
     
-    writeFirewallRules(egress_port=2, dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
+    writeFirewallRules(egress_port="2", dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
 
     # initial access setup
         
