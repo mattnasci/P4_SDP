@@ -5,6 +5,7 @@
 const bit<16> TYPE_IPV4 = 0x800;
 const bit<16> MIN_SPA_DATA_SIZE = 80;
 const bit<16> MAX_SPA_PACKET_LEN = 1500;
+#define CPU_PORT 255
 
 /*************************************************************************
 *********************** H E A D E R S  ***********************************
@@ -195,4 +196,5 @@ MyEgress(),
 MyComputeChecksum(),
 MyDeparser()
 ) main;
+
 
