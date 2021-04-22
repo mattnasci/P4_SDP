@@ -3,6 +3,7 @@
 #include <v1model.p4>
 
 const bit<16> TYPE_IPV4 = 0x800;
+const bit<8>  UDP_PROTO = 17;
 const bit<16> MIN_SPA_DATA_SIZE = 80;
 const bit<16> MAX_SPA_PACKET_LEN = 1500;
 #define CPU_PORT 255
@@ -48,6 +49,13 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> length;
+    bit<16> checksum;
+}
+
 struct metadata {
     /* empty */
 }
@@ -55,6 +63,7 @@ struct metadata {
 struct headers {
     ethernet_t   ethernet;
     ipv4_t       ipv4;
+    udp_t        udp;
 }
 
 /*************************************************************************
@@ -80,6 +89,14 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            UDP_PROTO: parse_udp;
+            default: accept;
+        }
+    }
+    
+    state parse_udp {
+        packet.extract(hdr.udp);
         transition accept;
     }
 
@@ -134,7 +151,11 @@ control MyIngress(inout headers hdr,
         if (hdr.ipv4.isValid()) {
             ipv4_lpm.apply();
             // TODO aggiungi condizione per verificare SPA packet o messaggio SDP controller prima di inviare a CPU
+            
+            // TODO check su min e max spa size
+            if (hdr.udp.isValid()) {
             send_to_controller();
+            }
         }
     }
 }

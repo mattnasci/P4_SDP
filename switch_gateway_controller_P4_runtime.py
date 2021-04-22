@@ -373,6 +373,21 @@ def main():
             dst = p[IP].dst
             print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
             parse_spa_packet(payload, src, dst)
+            
+    connection = sh.client        
+    while True:
+        print("Waiting for real SPA")
+        packet = connection.stream_in_q.get()
+        print("UDP Found! Is SPA? Let's parse it" + str(packet))
+        # TODO the packet is not recognized as the pcap one, trova come convertirlo
+        if(p.haslayer(UDP) == 1):
+            payload = p[UDP].payload.load
+            print(type(payload))
+            print(payload)
+            src = p[IP].src
+            dst = p[IP].dst
+            print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
+            parse_spa_packet(payload, src, dst)
 
 if __name__ == "__main__":
     main()
