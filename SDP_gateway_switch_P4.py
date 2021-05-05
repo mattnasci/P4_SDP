@@ -4,7 +4,7 @@ import struct
 import os
 import json
 import shutil
-import datetime
+import datetime as dt
 import threading
 import base64
 import binascii
@@ -45,10 +45,10 @@ RIJNDAEL_BLOCKSIZE = 16
 
 # Global variables
 controller_ready = 0
-last_cred_update = datetime.datetime(1967, 1, 1)
-last_service_refresh = datetime.datetime(1967, 1, 1)
-last_access_refresh = datetime.datetime(1967, 1, 1)
-last_contact = datetime.datetime(1967, 1, 1)
+last_cred_update = dt.datetime(1967, 1, 1)
+last_service_refresh = dt.datetime(1967, 1, 1)
+last_access_refresh = dt.datetime(1967, 1, 1)
+last_contact = dt.datetime(1967, 1, 1)
 client_state = "ready"
 services = []
 access_list = []
@@ -139,46 +139,46 @@ def parse_spa_packet(spa_message, source, destination):
     spa_obj.packet_dst_ip = destination
 
     if spa_obj.packet_data_len > MAX_SPA_PACKET_LEN:
-        print("packet exceed max SPA")
+        print("[SPA] packet exceed max SPA")
         return # TODO not spa message
 
     if spa_obj.packet_data_len < MIN_SPA_DATA_SIZE:
-        print("packet too small")
+        print("[SPA] packet too small")
         return # TODO not spa message
         
-    print("SPA message is of the right size")
+    print("[SPA] SPA message is of the right size")
 
     # verify no rijndael prefix
     if constant_runtime_cmp(spa_obj.packet_data, B64_RIJNDAEL_SALT, B64_RIJNDAEL_SALT_STR_LEN) == 0:
-        print("packet is forged")
+        print("[SPA] packet is forged")
         return # SPA_MSG_BAD_DATA
         
-    print("SPA message has no forged prefix")
+    print("[SPA] SPA message has no forged prefix")
 
     # verify if base64 encoding
     if not is_base64(spa_obj.packet_data, spa_obj.packet_data_len):
-        print("packet has invalid characters")
+        print("[SPA] packet has invalid characters")
         return #SPA_MSG_NOT_SPA_DATA
         
-    print("SPA message is base64")
+    print("[SPA] SPA message is base64")
     
     # extract encoded sdp id
     encoded_sdp_id = spa_obj.packet_data[:6]
-    print("Encoded SDP ID extracted " + encoded_sdp_id.decode())
+    print("[SPA] Encoded SDP ID extracted " + encoded_sdp_id.decode())
     
     padd = (4 - len(encoded_sdp_id) % 4) % 4
     for i in range(padd):
         encoded_sdp_id = bytearray(encoded_sdp_id)
         encoded_sdp_id.extend('='.encode('latin-1'))
-    print("Encoded SDP ID padded " + encoded_sdp_id.decode())
+    print("[SPA] Encoded SDP ID padded " + encoded_sdp_id.decode())
     
     # decode from b64 to original data
     decoded_sdp_id = (base64.b64decode(encoded_sdp_id))
-    print("Decoded SDP ID is: " + decoded_sdp_id.decode())
+    print("[SPA] Decoded SDP ID is: " + decoded_sdp_id.decode())
     print(type(decoded_sdp_id))
     
     spa_obj.sdp_id = int.from_bytes(decoded_sdp_id, "little")
-    print("SDP ID inserted in spaobj as: " + str(spa_obj.sdp_id))
+    print("[SPA] SDP ID inserted in spaobj as: " + str(spa_obj.sdp_id))
     print(type(spa_obj.sdp_id))
 
     if (spa_obj.sdp_id == 0):
@@ -188,22 +188,23 @@ def parse_spa_packet(spa_message, source, destination):
     m = hashlib.sha256()
     m.update(spa_obj.packet_data)
     curr_digest = base64.b64encode(m.digest())
-    print("SPA messgage B64 digested is: " + str(curr_digest))
+    print("[SPA] SPA messgage B64 digested is: " + str(curr_digest))
     for i in digest_list:
         if i == curr_digest:
-            print("FOUND SAME DIGEST, REPLAY ATTACK!")
+            print("[SPA] FOUND SAME DIGEST, REPLAY ATTACK!")
             return #REPLAY_ATTACK_ERR
     digest_list.append(curr_digest)
-    print("Digest saved, current archive is:")
+    print("[SPA] Digest saved, current archive is:")
     print(digest_list)
 
     #SDP ID check
     for a in access_list:
         if a.sdp_id == spa_obj.sdp_id:
-            print("Match found for the SDP ID in access database")
+            print("[SPA] Match found for the SDP ID in access database")
             curr_stanza = a
+            break
         else:
-            print("Not an authorized SDP ID")
+            print("[SPA] Not an authorized SDP ID")
             return #SPA_FROM_UNAUTH_SDPID
 
     #IMPLEMENT IP CHECK (current ANY)
@@ -223,13 +224,13 @@ def parse_spa_packet(spa_message, source, destination):
     h = hmac.new(key, tbuf, hashlib.sha256)
     curr_digest = h.digest()
 
-    print("Extracted HMAC is")
+    print("[SPA] Extracted HMAC is")
     print(hmac_digest)
-    print("Calculated HMAC is")
+    print("[SPA] Calculated HMAC is")
     print(curr_digest)
 
     if (constant_runtime_cmp(hmac_digest, curr_digest, len(hmac_digest)) != 0):
-        print("HMAC verification failed")
+        print("[SPA] HMAC verification failed")
         return # INVALID_DATA_HMAC_COMPAREFAIL
 
     # ** HMAC verified, remove SDP_ID from message and HMAC
@@ -241,7 +242,7 @@ def parse_spa_packet(spa_message, source, destination):
 
     # ** Message decryption
     if((spa_obj.message_data_len % RIJNDAEL_BLOCKSIZE) != 0):
-        print("wrong cipher size!")
+        print("[SPA] wrong cipher size!")
         return
     salt = spa_obj.message_data[8:16]
     ciphertext = spa_obj.message_data[16:]
@@ -260,7 +261,7 @@ def parse_spa_packet(spa_message, source, destination):
     cipher = AES.new(key, AES.MODE_CBC, iv)
     decrypted = unpad(cipher.decrypt(ciphertext), 16)
     
-    print("SPA message is decrypted! Content is: " + str(decrypted))
+    print("[SPA] SPA message is decrypted! Content is: " + str(decrypted))
     
     # TODO check su parametri dati
     # decrypted dev'essere di dimensione > len(cipher) - 32
@@ -276,12 +277,11 @@ def parse_spa_packet(spa_message, source, destination):
     s = hashlib.sha256()
     s.update(tbuf)
     curr_digest = base64.b64encode(s.digest())
-    print(curr_digest)
     digest_pad = add_padding(digest)
-    print(digest_pad)
     if (constant_runtime_cmp(digest_pad, curr_digest, len(digest_pad)) != 0):
-        print("Digest verification failed")
+        print("[SPA] Digest verification failed")
         return # DIGEST_VERIFICATION_FAILED
+    print("[SPA] Digest verified")
         
     # message
     msg = base64.b64decode(add_padding(fields[3]))
@@ -291,7 +291,7 @@ def parse_spa_packet(spa_message, source, destination):
     allowed_serv = []
     for s in range(1, len(msg)):
         service_req.append(msg[s])
-    print("receive SPA message from IP " + str(spa_ip) + " for services " + str(service_req))
+    print("[SPA] receive SPA message from IP " + str(spa_ip) + " for services " + str(service_req))
     
     # TODO Verifica TimeOut check_pkt_age in incoming_spa
     
@@ -303,13 +303,14 @@ def parse_spa_packet(spa_message, source, destination):
                     r = r.decode("utf-8")
                     if s == r:
                         allowed_serv.append(r)
-        else:
-            print("Not an authorized SDP ID")
-            return #SPA_FROM_UNAUTH_SDPID
+    
+    if not allowed_serv:
+        print("[SPA] SDP ID is not authorized for any service")
+        return #SPA_FROM_UNAUTH_SDPID
             
-    print("SDP ID " + str(spa_obj.sdp_id) + " is allowed to access service/s: " + str(allowed_serv))
+    print("[SPA] SDP ID " + str(spa_obj.sdp_id) + " is allowed to access service/s: " + str(allowed_serv))
 
-    return service_req, allowed_service
+    return
     # TODO implementa valori return
 
 # ___*** SDP functions ***___
@@ -327,28 +328,28 @@ def send_message(curr_sock, action, data):
     curr_sock.sendall(bytes(s_bytes))
 
 def cred_update_req(curr_sock, server_info, msg_cnt):
-    if (datetime.datetime.now() >= last_cred_update + datetime.timedelta(seconds=CRED_UPDATE_INTERVAL)):
+    if (dt.datetime.now() >= last_cred_update + dt.timedelta(seconds=CRED_UPDATE_INTERVAL)):
         print("It is time for a credential update request.")
         send_message(curr_sock,'credential_update_request',None)
         client_state = "cred_update"
         check_inbox(msg_cnt, 1, curr_sock, server_info)
         
 def serv_refresh_req(curr_sock, server_info, msg_cnt):
-    if (datetime.datetime.now() >= last_service_refresh + datetime.timedelta(seconds=SERVICE_REFRESH_INTERVAL)):
+    if (dt.datetime.now() >= last_service_refresh + dt.timedelta(seconds=SERVICE_REFRESH_INTERVAL)):
         print("It is time for a service refresh request.")
         send_message(curr_sock,'service_refresh_request',None)
         client_state = "service_update"
         check_inbox(msg_cnt, 1, curr_sock, server_info)
         
 def access_refresh_req(curr_sock, server_info, msg_cnt):
-    if (datetime.datetime.now() >= last_access_refresh + datetime.timedelta(seconds=ACCESS_REFRESH_INTERVAL)):
+    if (dt.datetime.now() >= last_access_refresh + dt.timedelta(seconds=ACCESS_REFRESH_INTERVAL)):
         print("It is time for aa access refresh request.")
         send_message(curr_sock,'access_refresh_request',None)
         client_state = "access_update"
         check_inbox(msg_cnt, 1, curr_sock, server_info)
         
 def keep_alive_req(curr_sock, server_info, msg_cnt):
-    if (datetime.datetime.now() >= last_contact + datetime.timedelta(seconds=DEFAULT_INTERVAL_KEEP_ALIVE_SECONDS)):
+    if (dt.datetime.now() >= last_contact + dt.timedelta(seconds=DEFAULT_INTERVAL_KEEP_ALIVE_SECONDS)):
         print("Sensing keepalive.")
         send_message(curr_sock,'keep_alive',None)
         client_state = "keep_alive"
@@ -426,7 +427,7 @@ def check_inbox(cnt, queue_len, curr_sock, server_info):
         # ** keep alive received **
         elif(msg_action == "keep_alive"):
             print("Keep-alive response received")
-            last_contact = datetime.datetime.now()
+            last_contact = dt.datetime.now()
             client_state = "ready"
 
         # ** credential update received **
@@ -457,7 +458,7 @@ def check_inbox(cnt, queue_len, curr_sock, server_info):
                 
             client_state = "ready"
             
-            last_cred_update = datetime.datetime.now()
+            last_cred_update = dt.datetime.now()
             
             send_message(curr_sock, 'credential_update_ack', None)
 
@@ -465,7 +466,7 @@ def check_inbox(cnt, queue_len, curr_sock, server_info):
         elif(msg_action == "service_refresh"):
             r_data = json_msg.get("data")
             print("Service data refresh received")
-            last_service_refresh = datetime.datetime.now()
+            last_service_refresh = dt.datetime.now()
             
             # delete current services instance and add the new ones
             services.clear()
@@ -523,7 +524,7 @@ def check_inbox(cnt, queue_len, curr_sock, server_info):
         elif(msg_action == "access_refresh"):
             r_data = json_msg.get("data")
             print("Access data refresh received")
-            last_access_refresh = datetime.datetime.now()
+            last_access_refresh = dt.datetime.now()
             
             # delete current access_list instance and add the new access
             access_list.clear()
@@ -713,7 +714,7 @@ def main():
         
         print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
         
-        service_req, allowed_services = parse_spa_packet(spa_payload, src, dst)
+        parse_spa_packet(spa_payload, src, dst)
         
         # TODO Imposta firewall rules
 
