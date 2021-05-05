@@ -5,11 +5,15 @@ import hmac
 
 from scapy.all import *
 from hashlib import sha256
+from scapy.layers.l2 import Ether
 
 from Crypto.Util.Padding import unpad
 from Crypto.Cipher import AES
 
+
 import p4runtime_sh.shell as sh
+from p4.config.v1 import p4info_pb2
+from p4.v1 import p4runtime_pb2
 
 services=[]
 access_list=[]
@@ -92,7 +96,7 @@ def parse_access_json():
         print("Loaded this new access json: ")
         print(a_json)
         curr_sdp_id = int(a_json.get(u'sdp_id'))
-        curr_s_list = a_json.get(u'service_list')
+        curr_s_list = a_json.get(u'service_list'){
         print(curr_s_list)
         curr_ports = a_json.get(u'open_ports')
         curr_enc_key = a_json.get(u'spa_encryption_key_base64')
@@ -377,17 +381,22 @@ def main():
     connection = sh.client        
     while True:
         print("Waiting for real SPA")
-        packet = connection.stream_in_q.get()
-        print("UDP Found! Is SPA? Let's parse it" + str(packet))
+        curr_packet = connection.stream_in_q.get()
+        print("UDP Found! Is SPA? Let's parse it" + str(curr_packet))
+        print(type(curr_packet))
         # TODO the packet is not recognized as the pcap one, trova come convertirlo
-        if(p.haslayer(UDP) == 1):
-            payload = p[UDP].payload.load
-            print(type(payload))
-            print(payload)
-            src = p[IP].src
-            dst = p[IP].dst
-            print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
-            parse_spa_packet(payload, src, dst)
+        curr_payload = curr_packet.packet.payload
+        print(len(curr_payload))
+        print(curr_payload)
+        ip_payload = curr_payload[12:]
+        spa_payload = curr_payload[32:]
+        print(spa_payload)
+        curr_ip = IP(ip_payload)
+        curr_ip.show()
+        src = curr_ip[IP].src
+        dst = curr_ip[IP].dst
+        print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
+        parse_spa_packet(spa_payload, src, dst)
 
 if __name__ == "__main__":
     main()
