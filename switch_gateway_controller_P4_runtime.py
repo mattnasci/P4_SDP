@@ -96,7 +96,7 @@ def parse_access_json():
         print("Loaded this new access json: ")
         print(a_json)
         curr_sdp_id = int(a_json.get(u'sdp_id'))
-        curr_s_list = a_json.get(u'service_list'){
+        curr_s_list = a_json.get(u'service_list')
         print(curr_s_list)
         curr_ports = a_json.get(u'open_ports')
         curr_enc_key = a_json.get(u'spa_encryption_key_base64')
