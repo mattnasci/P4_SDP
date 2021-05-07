@@ -3,7 +3,14 @@
     {
       "name" : "scalars_0",
       "id" : 0,
-      "fields" : []
+      "fields" : [
+        ["reg_pos_one_0", 32, false],
+        ["reg_pos_two_0", 32, false],
+        ["reg_val_one_0", 1, false],
+        ["reg_val_two_0", 1, false],
+        ["direction_0", 1, false],
+        ["_padding_0", 5, false]
+      ]
     },
     {
       "name" : "standard_metadata",
@@ -54,6 +61,39 @@
         ["srcAddr", 32, false],
         ["dstAddr", 32, false]
       ]
+    },
+    {
+      "name" : "udp_t",
+      "id" : 4,
+      "fields" : [
+        ["srcPort", 16, false],
+        ["dstPort", 16, false],
+        ["length", 16, false],
+        ["checksum", 16, false]
+      ]
+    },
+    {
+      "name" : "tcp_t",
+      "id" : 5,
+      "fields" : [
+        ["srcPort", 16, false],
+        ["dstPort", 16, false],
+        ["seqNo", 32, false],
+        ["ackNo", 32, false],
+        ["dataOffset", 4, false],
+        ["res", 4, false],
+        ["cwr", 1, false],
+        ["ece", 1, false],
+        ["urg", 1, false],
+        ["ack", 1, false],
+        ["psh", 1, false],
+        ["rst", 1, false],
+        ["syn", 1, false],
+        ["fin", 1, false],
+        ["window", 16, false],
+        ["checksum", 16, false],
+        ["urgentPtr", 16, false]
+      ]
     }
   ],
   "headers" : [
@@ -84,6 +124,20 @@
       "header_type" : "ipv4_t",
       "metadata" : false,
       "pi_omit" : true
+    },
+    {
+      "name" : "udp",
+      "id" : 4,
+      "header_type" : "udp_t",
+      "metadata" : false,
+      "pi_omit" : true
+    },
+    {
+      "name" : "tcp",
+      "id" : 5,
+      "header_type" : "tcp_t",
+      "metadata" : false,
+      "pi_omit" : true
     }
   ],
   "header_stacks" : [],
@@ -92,13 +146,13 @@
   "header_union_stacks" : [],
   "field_lists" : [],
   "errors" : [
-    ["NoError", 1],
-    ["PacketTooShort", 2],
-    ["NoMatch", 3],
-    ["StackOutOfBounds", 4],
-    ["HeaderTooShort", 5],
-    ["ParserTimeout", 6],
-    ["ParserInvalidArgument", 7]
+    ["NoError", 0],
+    ["PacketTooShort", 1],
+    ["NoMatch", 2],
+    ["StackOutOfBounds", 3],
+    ["HeaderTooShort", 4],
+    ["ParserTimeout", 5],
+    ["ParserInvalidArgument", 6]
   ],
   "enums" : [],
   "parsers" : [
@@ -129,7 +183,8 @@
               "next_state" : "parse_ipv4"
             },
             {
-              "value" : "default",
+              "type" : "default",
+              "value" : null,
               "mask" : null,
               "next_state" : null
             }
@@ -157,7 +212,73 @@
           ],
           "transitions" : [
             {
-              "value" : "default",
+              "type" : "hexstr",
+              "value" : "0x11",
+              "mask" : null,
+              "next_state" : "parse_udp"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x06",
+              "mask" : null,
+              "next_state" : "parse_tcp"
+            },
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "protocol"]
+            }
+          ]
+        },
+        {
+          "name" : "parse_udp",
+          "id" : 2,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "udp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
+              "mask" : null,
+              "next_state" : null
+            }
+          ],
+          "transition_key" : []
+        },
+        {
+          "name" : "parse_tcp",
+          "id" : 3,
+          "parser_ops" : [
+            {
+              "parameters" : [
+                {
+                  "type" : "regular",
+                  "value" : "tcp"
+                }
+              ],
+              "op" : "extract"
+            }
+          ],
+          "transitions" : [
+            {
+              "type" : "default",
+              "value" : null,
               "mask" : null,
               "next_state" : null
             }
@@ -174,23 +295,211 @@
       "id" : 0,
       "source_info" : {
         "filename" : "switch.p4",
-        "line" : 180,
+        "line" : 392,
         "column" : 8,
         "source_fragment" : "MyDeparser"
       },
-      "order" : ["ethernet", "ipv4"]
+      "order" : ["ethernet", "ipv4", "udp", "tcp"],
+      "primitives" : []
     }
   ],
   "meter_arrays" : [],
   "counter_arrays" : [],
-  "register_arrays" : [],
+  "register_arrays" : [
+    {
+      "name" : "MyIngress.bloom_filter_1",
+      "id" : 0,
+      "source_info" : {
+        "filename" : "switch.p4",
+        "line" : 154,
+        "column" : 27,
+        "source_fragment" : "bloom_filter_1"
+      },
+      "size" : 4096,
+      "bitwidth" : 1
+    },
+    {
+      "name" : "MyIngress.bloom_filter_2",
+      "id" : 1,
+      "source_info" : {
+        "filename" : "switch.p4",
+        "line" : 155,
+        "column" : 27,
+        "source_fragment" : "bloom_filter_2"
+      },
+      "size" : 4096,
+      "bitwidth" : 1
+    }
+  ],
   "calculations" : [
     {
       "name" : "calc",
       "id" : 0,
+      "algo" : "crc16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_0",
+      "id" : 1,
+      "algo" : "crc32",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_1",
+      "id" : 2,
+      "algo" : "crc16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_2",
+      "id" : 3,
+      "algo" : "crc32",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_3",
+      "id" : 4,
+      "algo" : "crc16",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_4",
+      "id" : 5,
+      "algo" : "crc32",
+      "input" : [
+        {
+          "type" : "field",
+          "value" : ["ipv4", "dstAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "srcAddr"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "dstPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["tcp", "srcPort"]
+        },
+        {
+          "type" : "field",
+          "value" : ["ipv4", "protocol"]
+        }
+      ]
+    },
+    {
+      "name" : "calc_5",
+      "id" : 6,
       "source_info" : {
         "filename" : "switch.p4",
-        "line" : 158,
+        "line" : 370,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
@@ -252,8 +561,38 @@
       "primitives" : []
     },
     {
-      "name" : "MyIngress.drop",
+      "name" : "NoAction",
       "id" : 1,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 2,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 3,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 4,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "NoAction",
+      "id" : 5,
+      "runtime_data" : [],
+      "primitives" : []
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 6,
       "runtime_data" : [],
       "primitives" : [
         {
@@ -266,7 +605,7 @@
           ],
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 105,
+            "line" : 161,
             "column" : 8,
             "source_fragment" : "mark_to_drop(standard_metadata)"
           }
@@ -274,8 +613,327 @@
       ]
     },
     {
+      "name" : "MyIngress.drop",
+      "id" : 7,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 161,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 8,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 161,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 9,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 161,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 10,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 161,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.drop",
+      "id" : 11,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "mark_to_drop",
+          "parameters" : [
+            {
+              "type" : "header",
+              "value" : "standard_metadata"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 161,
+            "column" : 8,
+            "source_fragment" : "mark_to_drop(standard_metadata)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.send_to_controller",
+      "id" : 12,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00ff"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 165,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = 255"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.compute_hashes",
+      "id" : 13,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_one_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 171,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_one, HashAlgorithm.crc16, (bit<32>)0, {ipAddr1, ..."
+          }
+        },
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_two_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_0"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 178,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_two, HashAlgorithm.crc32, (bit<32>)0, {ipAddr1, ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.compute_hashes",
+      "id" : 14,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_one_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_1"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 171,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_one, HashAlgorithm.crc16, (bit<32>)0, {ipAddr1, ..."
+          }
+        },
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_two_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_2"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 178,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_two, HashAlgorithm.crc32, (bit<32>)0, {ipAddr1, ..."
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.compute_hashes",
+      "id" : 15,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_one_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_3"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 171,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_one, HashAlgorithm.crc16, (bit<32>)0, {ipAddr1, ..."
+          }
+        },
+        {
+          "op" : "modify_field_with_hash_based_offset",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_two_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00000000"
+            },
+            {
+              "type" : "calculation",
+              "value" : "calc_4"
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00001000"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 178,
+            "column" : 7,
+            "source_fragment" : "hash(reg_pos_two, HashAlgorithm.crc32, (bit<32>)0, {ipAddr1, ..."
+          }
+        }
+      ]
+    },
+    {
       "name" : "MyIngress.ipv4_forward",
-      "id" : 2,
+      "id" : 16,
       "runtime_data" : [
         {
           "name" : "dstAddr",
@@ -292,6 +950,25 @@
           "parameters" : [
             {
               "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 187,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
               "value" : ["ethernet", "srcAddr"]
             },
             {
@@ -301,7 +978,7 @@
           ],
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 110,
+            "line" : 188,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
           }
@@ -320,7 +997,7 @@
           ],
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 111,
+            "line" : 189,
             "column" : 8,
             "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
           }
@@ -362,7 +1039,7 @@
           ],
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 112,
+            "line" : 190,
             "column" : 8,
             "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
           }
@@ -370,9 +1047,18 @@
       ]
     },
     {
-      "name" : "MyIngress.send_to_controller",
-      "id" : 3,
-      "runtime_data" : [],
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 17,
+      "runtime_data" : [
+        {
+          "name" : "dstAddr",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
       "primitives" : [
         {
           "op" : "assign",
@@ -382,15 +1068,545 @@
               "value" : ["standard_metadata", "egress_spec"]
             },
             {
-              "type" : "hexstr",
-              "value" : "0x00ff"
+              "type" : "runtime_data",
+              "value" : 1
             }
           ],
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 116,
+            "line" : 187,
             "column" : 8,
-            "source_fragment" : "standard_metadata.egress_spec = 255"
+            "source_fragment" : "standard_metadata.egress_spec = port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 188,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 189,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 190,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 18,
+      "runtime_data" : [
+        {
+          "name" : "dstAddr",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 187,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 188,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 189,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 190,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.ipv4_forward",
+      "id" : 19,
+      "runtime_data" : [
+        {
+          "name" : "dstAddr",
+          "bitwidth" : 48
+        },
+        {
+          "name" : "port",
+          "bitwidth" : 9
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["standard_metadata", "egress_spec"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 1
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 187,
+            "column" : 8,
+            "source_fragment" : "standard_metadata.egress_spec = port"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "srcAddr"]
+            },
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 188,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.srcAddr = hdr.ethernet.dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ethernet", "dstAddr"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 189,
+            "column" : 8,
+            "source_fragment" : "hdr.ethernet.dstAddr = dstAddr"
+          }
+        },
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["ipv4", "ttl"]
+            },
+            {
+              "type" : "expression",
+              "value" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "&",
+                  "left" : {
+                    "type" : "expression",
+                    "value" : {
+                      "op" : "+",
+                      "left" : {
+                        "type" : "field",
+                        "value" : ["ipv4", "ttl"]
+                      },
+                      "right" : {
+                        "type" : "hexstr",
+                        "value" : "0xff"
+                      }
+                    }
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0xff"
+                  }
+                }
+              }
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 190,
+            "column" : 8,
+            "source_fragment" : "hdr.ipv4.ttl = hdr.ipv4.ttl - 1"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.set_direction",
+      "id" : 20,
+      "runtime_data" : [
+        {
+          "name" : "dir",
+          "bitwidth" : 1
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "direction_0"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 247,
+            "column" : 8,
+            "source_fragment" : "direction = dir"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "MyIngress.set_direction",
+      "id" : 21,
+      "runtime_data" : [
+        {
+          "name" : "dir",
+          "bitwidth" : 1
+        }
+      ],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "direction_0"]
+            },
+            {
+              "type" : "runtime_data",
+              "value" : 0
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 247,
+            "column" : 8,
+            "source_fragment" : "direction = dir"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "switch314",
+      "id" : 22,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.bloom_filter_1"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_one_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 314,
+            "column" : 36,
+            "source_fragment" : "bloom_filter_1.write(reg_pos_one, 1)"
+          }
+        },
+        {
+          "op" : "register_write",
+          "parameters" : [
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.bloom_filter_2"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_two_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x01"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 315,
+            "column" : 36,
+            "source_fragment" : "bloom_filter_2.write(reg_pos_two, 1)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "switch307",
+      "id" : 23,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "direction_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 307,
+            "column" : 28,
+            "source_fragment" : "direction = 0"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "switch339",
+      "id" : 24,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_val_one_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.bloom_filter_1"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_one_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 339,
+            "column" : 32,
+            "source_fragment" : "bloom_filter_1.read(reg_val_one, reg_pos_one)"
+          }
+        },
+        {
+          "op" : "register_read",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_val_two_0"]
+            },
+            {
+              "type" : "register_array",
+              "value" : "MyIngress.bloom_filter_2"
+            },
+            {
+              "type" : "field",
+              "value" : ["scalars", "reg_pos_two_0"]
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 340,
+            "column" : 32,
+            "source_fragment" : "bloom_filter_2.read(reg_val_two, reg_pos_two)"
+          }
+        }
+      ]
+    },
+    {
+      "name" : "switch327",
+      "id" : 25,
+      "runtime_data" : [],
+      "primitives" : [
+        {
+          "op" : "assign",
+          "parameters" : [
+            {
+              "type" : "field",
+              "value" : ["scalars", "direction_0"]
+            },
+            {
+              "type" : "hexstr",
+              "value" : "0x00"
+            }
+          ],
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 327,
+            "column" : 24,
+            "source_fragment" : "direction = 0"
           }
         }
       ]
@@ -402,7 +1618,7 @@
       "id" : 0,
       "source_info" : {
         "filename" : "switch.p4",
-        "line" : 101,
+        "line" : 150,
         "column" : 8,
         "source_fragment" : "MyIngress"
       },
@@ -413,7 +1629,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 120,
+            "line" : 193,
             "column" : 10,
             "source_fragment" : "ipv4_lpm"
           },
@@ -431,16 +1647,16 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [2, 1, 0],
+          "action_ids" : [16, 6, 0],
           "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
-          "base_default_next" : "tbl_send_to_controller",
+          "base_default_next" : null,
           "next_tables" : {
-            "MyIngress.ipv4_forward" : "tbl_send_to_controller",
-            "MyIngress.drop" : "tbl_send_to_controller",
-            "NoAction" : "tbl_send_to_controller"
+            "MyIngress.ipv4_forward" : null,
+            "MyIngress.drop" : null,
+            "NoAction" : null
           },
           "default_entry" : {
-            "action_id" : 1,
+            "action_id" : 6,
             "action_const" : false,
             "action_data" : [],
             "action_entry_const" : false
@@ -451,8 +1667,8 @@
           "id" : 1,
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 137,
-            "column" : 12,
+            "line" : 290,
+            "column" : 24,
             "source_fragment" : "send_to_controller()"
           },
           "key" : [],
@@ -462,14 +1678,481 @@
           "with_counters" : false,
           "support_timeout" : false,
           "direct_meters" : null,
-          "action_ids" : [3],
+          "action_ids" : [12],
           "actions" : ["MyIngress.send_to_controller"],
           "base_default_next" : null,
           "next_tables" : {
             "MyIngress.send_to_controller" : null
           },
           "default_entry" : {
-            "action_id" : 3,
+            "action_id" : 12,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_exact",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 232,
+            "column" : 10,
+            "source_fragment" : "ipv4_exact"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "hdr.ipv4.srcAddr",
+              "target" : ["ipv4", "srcAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [19, 9, 3],
+          "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "MyIngress.ipv4_forward" : null,
+            "MyIngress.drop" : null,
+            "NoAction" : null
+          },
+          "default_entry" : {
+            "action_id" : 9,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_switch307",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 307,
+            "column" : 38,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [23],
+          "actions" : ["switch307"],
+          "base_default_next" : "MyIngress.check_ports",
+          "next_tables" : {
+            "switch307" : "MyIngress.check_ports"
+          },
+          "default_entry" : {
+            "action_id" : 23,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.check_ports",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 250,
+            "column" : 10,
+            "source_fragment" : "check_ports"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.ingress_port",
+              "target" : ["standard_metadata", "ingress_port"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.egress_spec",
+              "target" : ["standard_metadata", "egress_spec"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [20, 4],
+          "actions" : ["MyIngress.set_direction", "NoAction"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "__MISS__" : null,
+            "__HIT__" : "MyIngress.ipv4_lpm_bis"
+          },
+          "default_entry" : {
+            "action_id" : 4,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_lpm_bis",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 206,
+            "column" : 10,
+            "source_fragment" : "ipv4_lpm_bis"
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "hdr.ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [17, 7, 1],
+          "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
+          "base_default_next" : "node_18",
+          "next_tables" : {
+            "MyIngress.ipv4_forward" : "node_18",
+            "MyIngress.drop" : "node_18",
+            "NoAction" : "node_18"
+          },
+          "default_entry" : {
+            "action_id" : 7,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_compute_hashes",
+          "id" : 6,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 313,
+            "column" : 36,
+            "source_fragment" : "compute_hashes(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort, hdr.tcp.dstPort)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [13],
+          "actions" : ["MyIngress.compute_hashes"],
+          "base_default_next" : "tbl_switch314",
+          "next_tables" : {
+            "MyIngress.compute_hashes" : "tbl_switch314"
+          },
+          "default_entry" : {
+            "action_id" : 13,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_switch314",
+          "id" : 7,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 314,
+            "column" : 36,
+            "source_fragment" : "bloom_filter_1.write(reg_pos_one, 1); ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [22],
+          "actions" : ["switch314"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "switch314" : null
+          },
+          "default_entry" : {
+            "action_id" : 22,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_drop",
+          "id" : 8,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 319,
+            "column" : 36,
+            "source_fragment" : "drop()"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [10],
+          "actions" : ["MyIngress.drop"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "MyIngress.drop" : null
+          },
+          "default_entry" : {
+            "action_id" : 10,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.ipv4_lpm_tris",
+          "id" : 9,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 219,
+            "column" : 10,
+            "source_fragment" : "ipv4_lpm_tris"
+          },
+          "key" : [
+            {
+              "match_type" : "lpm",
+              "name" : "hdr.ipv4.dstAddr",
+              "target" : ["ipv4", "dstAddr"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "lpm",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [18, 8, 2],
+          "actions" : ["MyIngress.ipv4_forward", "MyIngress.drop", "NoAction"],
+          "base_default_next" : "tbl_switch327",
+          "next_tables" : {
+            "MyIngress.ipv4_forward" : "tbl_switch327",
+            "MyIngress.drop" : "tbl_switch327",
+            "NoAction" : "tbl_switch327"
+          },
+          "default_entry" : {
+            "action_id" : 8,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_switch327",
+          "id" : 10,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 327,
+            "column" : 34,
+            "source_fragment" : "="
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [25],
+          "actions" : ["switch327"],
+          "base_default_next" : "MyIngress.check_ports_bis",
+          "next_tables" : {
+            "switch327" : "MyIngress.check_ports_bis"
+          },
+          "default_entry" : {
+            "action_id" : 25,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "MyIngress.check_ports_bis",
+          "id" : 11,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 263,
+            "column" : 10,
+            "source_fragment" : "check_ports_bis"
+          },
+          "key" : [
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.ingress_port",
+              "target" : ["standard_metadata", "ingress_port"],
+              "mask" : null
+            },
+            {
+              "match_type" : "exact",
+              "name" : "standard_metadata.egress_spec",
+              "target" : ["standard_metadata", "egress_spec"],
+              "mask" : null
+            }
+          ],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [21, 5],
+          "actions" : ["MyIngress.set_direction", "NoAction"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "__MISS__" : null,
+            "__HIT__" : "node_25"
+          },
+          "default_entry" : {
+            "action_id" : 5,
+            "action_const" : false,
+            "action_data" : [],
+            "action_entry_const" : false
+          }
+        },
+        {
+          "name" : "tbl_compute_hashes_0",
+          "id" : 12,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 331,
+            "column" : 32,
+            "source_fragment" : "compute_hashes(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort, hdr.tcp.dstPort)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [14],
+          "actions" : ["MyIngress.compute_hashes"],
+          "base_default_next" : "node_28",
+          "next_tables" : {
+            "MyIngress.compute_hashes" : "node_28"
+          },
+          "default_entry" : {
+            "action_id" : 14,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_compute_hashes_1",
+          "id" : 13,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 334,
+            "column" : 32,
+            "source_fragment" : "compute_hashes(hdr.ipv4.dstAddr, hdr.ipv4.srcAddr, hdr.tcp.dstPort, hdr.tcp.srcPort)"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [15],
+          "actions" : ["MyIngress.compute_hashes"],
+          "base_default_next" : "node_28",
+          "next_tables" : {
+            "MyIngress.compute_hashes" : "node_28"
+          },
+          "default_entry" : {
+            "action_id" : 15,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_switch339",
+          "id" : 14,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 339,
+            "column" : 32,
+            "source_fragment" : "bloom_filter_1.read(reg_val_one, reg_pos_one); ..."
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [24],
+          "actions" : ["switch339"],
+          "base_default_next" : "node_30",
+          "next_tables" : {
+            "switch339" : "node_30"
+          },
+          "default_entry" : {
+            "action_id" : 24,
+            "action_const" : true,
+            "action_data" : [],
+            "action_entry_const" : true
+          }
+        },
+        {
+          "name" : "tbl_drop_0",
+          "id" : 15,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 343,
+            "column" : 36,
+            "source_fragment" : "drop()"
+          },
+          "key" : [],
+          "match_type" : "exact",
+          "type" : "simple",
+          "max_size" : 1024,
+          "with_counters" : false,
+          "support_timeout" : false,
+          "direct_meters" : null,
+          "action_ids" : [11],
+          "actions" : ["MyIngress.drop"],
+          "base_default_next" : null,
+          "next_tables" : {
+            "MyIngress.drop" : null
+          },
+          "default_entry" : {
+            "action_id" : 11,
             "action_const" : true,
             "action_data" : [],
             "action_entry_const" : true
@@ -483,7 +2166,7 @@
           "id" : 0,
           "source_info" : {
             "filename" : "switch.p4",
-            "line" : 134,
+            "line" : 277,
             "column" : 12,
             "source_fragment" : "hdr.ipv4.isValid()"
           },
@@ -499,7 +2182,333 @@
             }
           },
           "false_next" : null,
-          "true_next" : "MyIngress.ipv4_lpm"
+          "true_next" : "node_3"
+        },
+        {
+          "name" : "node_3",
+          "id" : 1,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 279,
+            "column" : 16,
+            "source_fragment" : "hdr.ipv4.dstAddr == CONTR_IP"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["ipv4", "dstAddr"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0xc0a80321"
+              }
+            }
+          },
+          "true_next" : "MyIngress.ipv4_lpm",
+          "false_next" : "node_5"
+        },
+        {
+          "name" : "node_5",
+          "id" : 2,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 283,
+            "column" : 21,
+            "source_fragment" : "hdr.ipv4.srcAddr == CONTR_IP"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["ipv4", "srcAddr"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0xc0a80321"
+              }
+            }
+          },
+          "true_next" : "MyIngress.ipv4_lpm",
+          "false_next" : "node_7"
+        },
+        {
+          "name" : "node_7",
+          "id" : 3,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 287,
+            "column" : 21,
+            "source_fragment" : "hdr.udp.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["udp", "$valid$"]
+              }
+            }
+          },
+          "true_next" : "node_8",
+          "false_next" : "node_11"
+        },
+        {
+          "name" : "node_8",
+          "id" : 4,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 288,
+            "column" : 20,
+            "source_fragment" : "MIN_SPA_DATA_SIZE <= standard_metadata.packet_length"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "<=",
+              "left" : {
+                "type" : "hexstr",
+                "value" : "0x00000050"
+              },
+              "right" : {
+                "type" : "field",
+                "value" : ["standard_metadata", "packet_length"]
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "node_9"
+        },
+        {
+          "name" : "node_9",
+          "id" : 5,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 289,
+            "column" : 24,
+            "source_fragment" : "standard_metadata.packet_length <= MAX_SPA_PACKET_LEN"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "<=",
+              "left" : {
+                "type" : "field",
+                "value" : ["standard_metadata", "packet_length"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x000005dc"
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "tbl_send_to_controller"
+        },
+        {
+          "name" : "node_11",
+          "id" : 6,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 297,
+            "column" : 20,
+            "source_fragment" : "hdr.tcp.isValid()"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "d2b",
+              "left" : null,
+              "right" : {
+                "type" : "field",
+                "value" : ["tcp", "$valid$"]
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "node_12"
+        },
+        {
+          "name" : "node_12",
+          "id" : 7,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 299,
+            "column" : 24,
+            "source_fragment" : "hdr.tcp.syn == 1"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["tcp", "syn"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x01"
+              }
+            }
+          },
+          "true_next" : "node_13",
+          "false_next" : "MyIngress.ipv4_lpm_tris"
+        },
+        {
+          "name" : "node_13",
+          "id" : 8,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 302,
+            "column" : 28,
+            "source_fragment" : "hdr.tcp.ack == 0"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["tcp", "ack"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x00"
+              }
+            }
+          },
+          "true_next" : "MyIngress.ipv4_exact",
+          "false_next" : "tbl_switch307"
+        },
+        {
+          "name" : "node_18",
+          "id" : 9,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 311,
+            "column" : 36,
+            "source_fragment" : "direction == 0"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "direction_0"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x00"
+              }
+            }
+          },
+          "true_next" : "tbl_compute_hashes",
+          "false_next" : "tbl_drop"
+        },
+        {
+          "name" : "node_25",
+          "id" : 10,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 330,
+            "column" : 32,
+            "source_fragment" : "direction == 0"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "direction_0"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x00"
+              }
+            }
+          },
+          "true_next" : "tbl_compute_hashes_0",
+          "false_next" : "tbl_compute_hashes_1"
+        },
+        {
+          "name" : "node_28",
+          "id" : 11,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 337,
+            "column" : 32,
+            "source_fragment" : "direction == 1"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "==",
+              "left" : {
+                "type" : "field",
+                "value" : ["scalars", "direction_0"]
+              },
+              "right" : {
+                "type" : "hexstr",
+                "value" : "0x01"
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "tbl_switch339"
+        },
+        {
+          "name" : "node_30",
+          "id" : 12,
+          "source_info" : {
+            "filename" : "switch.p4",
+            "line" : 342,
+            "column" : 36,
+            "source_fragment" : "reg_val_one != 1 || reg_val_two != 1"
+          },
+          "expression" : {
+            "type" : "expression",
+            "value" : {
+              "op" : "or",
+              "left" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "!=",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "reg_val_one_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x01"
+                  }
+                }
+              },
+              "right" : {
+                "type" : "expression",
+                "value" : {
+                  "op" : "!=",
+                  "left" : {
+                    "type" : "field",
+                    "value" : ["scalars", "reg_val_two_0"]
+                  },
+                  "right" : {
+                    "type" : "hexstr",
+                    "value" : "0x01"
+                  }
+                }
+              }
+            }
+          },
+          "false_next" : null,
+          "true_next" : "tbl_drop_0"
         }
       ]
     },
@@ -508,7 +2517,7 @@
       "id" : 1,
       "source_info" : {
         "filename" : "switch.p4",
-        "line" : 146,
+        "line" : 358,
         "column" : 8,
         "source_fragment" : "MyEgress"
       },
@@ -524,13 +2533,13 @@
       "id" : 0,
       "source_info" : {
         "filename" : "switch.p4",
-        "line" : 158,
+        "line" : 370,
         "column" : 1,
         "source_fragment" : "update_checksum( ..."
       },
       "target" : ["ipv4", "hdrChecksum"],
       "type" : "generic",
-      "calculation" : "calc",
+      "calculation" : "calc_5",
       "verify" : false,
       "update" : true,
       "if_cond" : {
@@ -588,7 +2597,7 @@
   ],
   "program" : "build/switch.p4i",
   "__meta__" : {
-    "version" : [2, 18],
+    "version" : [2, 23],
     "compiler" : "https://github.com/p4lang/p4c"
   }
 }

@@ -72,6 +72,7 @@ extern packet_out {
 extern void verify(in bool check, in error toSignal);
 
 /// Built-in action that does nothing.
+@noWarn("unused")
 action NoAction() {}
 
 /// Standard match kinds for table key fields.
@@ -110,13 +111,14 @@ limitations under the License.
  *
  * https://github.com/p4lang/behavioral-model/blob/master/docs/simple_switch.md
  *
- * Note 2: There are ongoing discussions among P4 working group
- * members in 2019-Apr regarding exactly how resubmit, recirculate,
+ * Note 2: There were several discussions among P4 working group
+ * members in early 2019 regarding exactly how resubmit, recirculate,
  * and clone3 operations can be called anywhere in their respective
  * controls, but the values of the fields to be preserved is the value
  * they have when that control is finished executing.  That is how
- * these operations behave in P4_14, but this requires some care in
- * making this happen in P4_16.
+ * these operations are defined in P4_14.  See
+ * https://github.com/p4lang/behavioral-model/blob/master/docs/simple_switch.md#restrictions-on-recirculate-resubmit-and-clone-operations
+ * for more details on the current state of affairs.
  *
  * Note 3: There are at least some P4_14 implementations where
  * invoking a generate_digest operation on a field_list will create a
@@ -155,20 +157,37 @@ limitations under the License.
 */
 
 /* This is the P4-16 core library, which declares some built-in P4 constructs using P4 */
-# 52 "/usr/local/share/p4c/p4include/v1model.p4" 2
+# 53 "/usr/local/share/p4c/p4include/v1model.p4" 2
+
+
+
+
 
 match_kind {
     range,
+    // Either an exact match, or a wildcard (matching any value).
+    optional,
     // Used for implementing dynamic_action_selection
     selector
 }
 
-// Are these correct?
+const bit<32> __v1model_version = 20180101;
+
+
+
+
+
 @metadata @name("standard_metadata")
 struct standard_metadata_t {
+
+
+
+
+
     bit<9> ingress_port;
     bit<9> egress_spec;
     bit<9> egress_port;
+
     bit<32> instance_type;
     bit<32> packet_length;
     //
@@ -222,7 +241,11 @@ enum MeterType {
     bytes
 }
 
-extern counter {
+extern counter
+
+
+
+{
     /***
      * A counter object is created by calling its constructor.  This
      * creates an array of counter states, with the number of counter
@@ -232,8 +255,15 @@ extern counter {
      * You must provide a choice of whether to maintain only a packet
      * count (CounterType.packets), only a byte count
      * (CounterType.bytes), or both (CounterType.packets_and_bytes).
+     *
+     * Counters can be updated from your P4 program, but can only be
+     * read from the control plane.  If you need something that can be
+     * both read and written from the P4 program, consider using a
+     * register.
      */
     counter(bit<32> size, CounterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
     /***
      * count() causes the counter state with the specified index to be
      * read, modified, and written back, atomically relative to the
@@ -246,7 +276,11 @@ extern counter {
      *              size-1].  If index >= size, no counter state will be
      *              updated.
      */
+
+
+
     void count(in bit<32> index);
+
 }
 
 extern direct_counter {
@@ -260,6 +294,11 @@ extern direct_counter {
      * definition of that table:
      *
      *     counters = <object_name>;
+     *
+     * Counters can be updated from your P4 program, but can only be
+     * read from the control plane.  If you need something that can be
+     * both read and written from the P4 program, consider using a
+     * register.
      */
     direct_counter(CounterType type);
     /***
@@ -280,7 +319,11 @@ extern direct_counter {
 
 
 
-extern meter {
+extern meter
+
+
+
+{
     /***
      * A meter object is created by calling its constructor.  This
      * creates an array of meter states, with the number of meter
@@ -296,6 +339,8 @@ extern meter {
      * packets contain (MeterType.bytes).
      */
     meter(bit<32> size, MeterType type);
+    // FIXME -- size arg should be `int` but that breaks typechecking
+
     /***
      * execute_meter() causes the meter state with the specified index
      * to be read, modified, and written back, atomically relative to
@@ -315,7 +360,11 @@ extern meter {
      *              range, the final value of result is not specified,
      *              and should be ignored by the caller.
      */
+
+
+
     void execute_meter<T>(in bit<32> index, out T result);
+
 }
 
 extern direct_meter<T> {
@@ -354,8 +403,23 @@ extern direct_meter<T> {
     void read(out T result);
 }
 
-extern register<T> {
-    register(bit<32> size);
+
+
+
+extern register<T>
+
+{
+    /***
+     * A register object is created by calling its constructor.  This
+     * creates an array of 'size' identical elements, each with type
+     * T.  The array indices are in the range [0, size-1].  For
+     * example, this constructor call:
+     *
+     *     register<bit<32>>(512) my_reg;
+     *
+     * allocates storage for 512 values, each with type bit<32>.
+     */
+    register(bit<32> size); // FIXME -- arg should be `int` but that breaks typechecking
     /***
      * read() reads the state of the register array stored at the
      * specified index, and returns it as the value written to the
@@ -370,7 +434,12 @@ extern register<T> {
      *              value of result is not specified, and should be
      *              ignored by the caller.
      */
+    @noSideEffects
+
+
+
     void read(out T result, in bit<32> index);
+
     /***
      * write() writes the state of the register array at the specified
      * index, with the value provided by the value parameter.
@@ -393,7 +462,11 @@ extern register<T> {
      *              parameter's value is written into the register
      *              array element specified by index.
      */
+
+
+
     void write(in bit<32> index, in T value);
+
 }
 
 // used as table implementation attribute
@@ -466,6 +539,7 @@ extern void mark_to_drop();
  * of the different possible things that can happen to a packet when
  * ingress and egress processing are complete.
  */
+@pure
 extern void mark_to_drop(inout standard_metadata_t standard_metadata);
 
 /***
@@ -483,6 +557,7 @@ extern void mark_to_drop(inout standard_metadata_t standard_metadata);
  * @param T          Must be a type bit<W>
  * @param M          Must be a type bit<W>
  */
+@pure
 extern void hash<O, T, D, M>(out O result, in HashAlgorithm algo, in T base, in D data, in M max);
 
 extern action_selector {
@@ -522,7 +597,7 @@ extern Checksum16 {
  *                   may be supported).  Must be a compile-time
  *                   constant.
  */
-extern void verify_checksum<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
+extern void verify_checksum<T, O>(in bool condition, in T data, in O checksum, HashAlgorithm algo);
 
 /***
  * Computes the checksum of the supplied data and writes it to the
@@ -543,6 +618,7 @@ extern void verify_checksum<T, O>(in bool condition, in T data, inout O checksum
  *                   may be supported).  Must be a compile-time
  *                   constant.
  */
+@pure
 extern void update_checksum<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
 
 /***
@@ -554,7 +630,7 @@ extern void update_checksum<T, O>(in bool condition, in T data, inout O checksum
  * Calling verify_checksum_with_payload is only supported in the
  * VerifyChecksum control.
  */
-extern void verify_checksum_with_payload<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
+extern void verify_checksum_with_payload<T, O>(in bool condition, in T data, in O checksum, HashAlgorithm algo);
 
 /**
  * update_checksum_with_payload is identical in all ways to
@@ -565,6 +641,7 @@ extern void verify_checksum_with_payload<T, O>(in bool condition, in T data, ino
  * Calling update_checksum_with_payload is only supported in the
  * ComputeChecksum control.
  */
+@noSideEffects
 extern void update_checksum_with_payload<T, O>(in bool condition, in T data, inout O checksum, HashAlgorithm algo);
 
 /***
@@ -580,7 +657,7 @@ extern void update_checksum_with_payload<T, O>(in bool condition, in T data, ino
  * The value of the user-defined metadata fields that are preserved in
  * resubmitted packets is the value they have at the end of ingress
  * processing, not their values at the time the resubmit call is made.
- * See Note 2.
+ * See Note 2 for issues with this.
  *
  * Calling resubmit is only supported in the ingress control.  There
  * is no way to undo its effects once it has been called.  If resubmit
@@ -604,7 +681,7 @@ extern void resubmit<T>(in T data);
  * The value of the user-defined metadata fields that are preserved in
  * recirculated packets is the value they have at the end of egress
  * processing, not their values at the time the recirculate call is
- * made.  See Note 2.
+ * made.  See Note 2 for issues with this.
  *
  * Calling recirculate is only supported in the egress control.  There
  * is no way to undo its effects once it has been called.  If
@@ -649,7 +726,7 @@ extern void clone(in CloneType type, in bit<32> session);
  * packet(s).  The value of the user-defined metadata fields that are
  * preserved with cloned packets is the value they have at the end of
  * ingress or egress processing, not their values at the time the
- * clone3 call is made.  See Note 2.
+ * clone3 call is made.  See Note 2 for issues with this.
  *
  * If clone3 is called during ingress processing, the first parameter
  * must be CloneType.I2E.  If clone3 is called during egress
@@ -726,6 +803,14 @@ extern void assert(in bool check);
  */
 extern void assume(in bool check);
 
+/*
+ * Log user defined messages
+ * Example: log_msg("User defined message");
+ * or log_msg("Value1 = {}, Value2 = {}",{value1, value2});
+ */
+extern void log_msg(string msg);
+extern void log_msg<T>(string msg, in T data);
+
 // The name 'standard_metadata' is reserved
 
 /*
@@ -783,8 +868,14 @@ package V1Switch<H, M>(Parser<H, M> p,
 # 4 "switch.p4" 2
 
 const bit<16> TYPE_IPV4 = 0x800;
-const bit<16> MIN_SPA_DATA_SIZE = 80;
-const bit<16> MAX_SPA_PACKET_LEN = 1500;
+const bit<8> TYPE_UDP = 17;
+const bit<8> TYPE_TCP = 6;
+const bit<32> MIN_SPA_DATA_SIZE = 80;
+const bit<32> MAX_SPA_PACKET_LEN = 1500;
+const bit<32> CONTR_IP = 0xc0a80321;
+
+
+
 
 
 /*************************************************************************
@@ -828,6 +919,33 @@ header ipv4_t {
     ip4Addr_t dstAddr;
 }
 
+header udp_t {
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<16> length;
+    bit<16> checksum;
+}
+
+header tcp_t{
+    bit<16> srcPort;
+    bit<16> dstPort;
+    bit<32> seqNo;
+    bit<32> ackNo;
+    bit<4> dataOffset;
+    bit<4> res;
+    bit<1> cwr;
+    bit<1> ece;
+    bit<1> urg;
+    bit<1> ack;
+    bit<1> psh;
+    bit<1> rst;
+    bit<1> syn;
+    bit<1> fin;
+    bit<16> window;
+    bit<16> checksum;
+    bit<16> urgentPtr;
+}
+
 struct metadata {
     /* empty */
 }
@@ -835,6 +953,8 @@ struct metadata {
 struct headers {
     ethernet_t ethernet;
     ipv4_t ipv4;
+    udp_t udp;
+    tcp_t tcp;
 }
 
 /*************************************************************************
@@ -860,6 +980,20 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            TYPE_UDP: parse_udp;
+            TYPE_TCP: parse_tcp;
+            default: accept;
+        }
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
+        transition accept;
+    }
+
+    state parse_tcp {
+        packet.extract(hdr.tcp);
         transition accept;
     }
 
@@ -881,8 +1015,37 @@ control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
 control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
+
+    register<bit<1>>(4096) bloom_filter_1;
+    register<bit<1>>(4096) bloom_filter_2;
+    bit<32> reg_pos_one; bit<32> reg_pos_two;
+    bit<1> reg_val_one; bit<1> reg_val_two;
+    bit<1> direction;
+
     action drop() {
         mark_to_drop(standard_metadata);
+    }
+
+    action send_to_controller() {
+        standard_metadata.egress_spec = 255;
+        // manda pacchetto a controller, vedi se implementare altro
+    }
+
+    action compute_hashes(ip4Addr_t ipAddr1, ip4Addr_t ipAddr2, bit<16> port1, bit<16> port2){
+       //Get register position
+       hash(reg_pos_one, HashAlgorithm.crc16, (bit<32>)0, {ipAddr1,
+                                                           ipAddr2,
+                                                           port1,
+                                                           port2,
+                                                           hdr.ipv4.protocol},
+                                                           (bit<32>)4096);
+
+       hash(reg_pos_two, HashAlgorithm.crc32, (bit<32>)0, {ipAddr1,
+                                                           ipAddr2,
+                                                           port1,
+                                                           port2,
+                                                           hdr.ipv4.protocol},
+                                                           (bit<32>)4096);
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -890,11 +1053,6 @@ control MyIngress(inout headers hdr,
         hdr.ethernet.srcAddr = hdr.ethernet.dstAddr;
         hdr.ethernet.dstAddr = dstAddr;
         hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
-    }
-
-     action send_to_controller() {
-        standard_metadata.egress_spec = 255;
-        // manda pacchetto a controller, vedi se implementare altro
     }
 
     table ipv4_lpm {
@@ -910,11 +1068,150 @@ control MyIngress(inout headers hdr,
         default_action = drop();
     }
 
+    table ipv4_lpm_bis {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+    }
+
+    table ipv4_lpm_tris {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+    }
+
+    table ipv4_exact {
+        key = {
+            hdr.ipv4.dstAddr: exact;
+            hdr.ipv4.srcAddr: exact;
+        }
+        actions = {
+            ipv4_forward;
+            drop;
+            NoAction;
+        }
+        size = 1024;
+        default_action = drop();
+    }
+
+    action set_direction(bit<1> dir) {
+        direction = dir;
+    }
+
+    table check_ports {
+        key = {
+            standard_metadata.ingress_port: exact;
+            standard_metadata.egress_spec: exact;
+        }
+        actions = {
+            set_direction;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
+    table check_ports_bis {
+        key = {
+            standard_metadata.ingress_port: exact;
+            standard_metadata.egress_spec: exact;
+        }
+        actions = {
+            set_direction;
+            NoAction;
+        }
+        size = 1024;
+        default_action = NoAction();
+    }
+
     apply {
         if (hdr.ipv4.isValid()) {
-            ipv4_lpm.apply();
-            // TODO aggiungi condizione per verificare SPA packet o messaggio SDP controller prima di inviare a CPU
-            send_to_controller();
+            // always allow communications to SDP controller
+            if (hdr.ipv4.dstAddr == CONTR_IP) {
+                ipv4_lpm.apply();
+            }
+            // always allow communications from SDP controller
+            else if (hdr.ipv4.srcAddr == CONTR_IP) {
+                ipv4_lpm.apply();
+            }
+            // if UDP packet, it may be an SPA. Check size and send it to controller
+            else if (hdr.udp.isValid()) {
+                if (MIN_SPA_DATA_SIZE <= standard_metadata.packet_length) {
+                    if (standard_metadata.packet_length <= MAX_SPA_PACKET_LEN) {
+                        send_to_controller();
+                    }
+                }
+            }
+            // all other packets
+            else {
+                // if TCP connection
+                if (hdr.tcp.isValid()){
+                    // if it is a syn, may be start of connection or ack
+                    if (hdr.tcp.syn == 1) {
+                        // if it a connections start, controller gives auth
+                        // by handling exact match on addresses based on spa
+                        if (hdr.tcp.ack == 0){
+                            ipv4_exact.apply();
+                        }
+                        // it's a syn - ack
+                        else {
+                            direction = 0; // default
+                            if (check_ports.apply().hit) {
+                                ipv4_lpm_bis.apply();
+                                // if the syn-ack comes from internal network
+                                if (direction == 0) {
+                                    // set the bloom filter for connection tracking
+                                    compute_hashes(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort, hdr.tcp.dstPort);
+                                    bloom_filter_1.write(reg_pos_one, 1);
+                                    bloom_filter_2.write(reg_pos_two, 1);
+                                }
+                                // we shouldn't have syn-ack from external entities
+                                else {
+                                    drop();
+                                }
+                            }
+                        }
+                    }
+                    // packet comes from an established connection
+                    else {
+                        ipv4_lpm_tris.apply();
+                        direction = 0; // default
+                        if (check_ports_bis.apply().hit) {
+                            // test and set the bloom filter
+                            if (direction == 0) {
+                                compute_hashes(hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.tcp.srcPort, hdr.tcp.dstPort);
+                            }
+                            else {
+                                compute_hashes(hdr.ipv4.dstAddr, hdr.ipv4.srcAddr, hdr.tcp.dstPort, hdr.tcp.srcPort);
+                            }
+                            // Packet comes from outside
+                            if (direction == 1){
+                                // Read bloom filter cells to check if there are 1's
+                                bloom_filter_1.read(reg_val_one, reg_pos_one);
+                                bloom_filter_2.read(reg_val_two, reg_pos_two);
+                                // only allow flow to pass if both entries are set
+                                if (reg_val_one != 1 || reg_val_two != 1){
+                                    drop();
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -961,6 +1258,8 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.udp);
+        packet.emit(hdr.tcp);
     }
 }
 

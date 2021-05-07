@@ -3,7 +3,7 @@ pkg_info {
 }
 tables {
   preamble {
-    id: 33574068
+    id: 37375156
     name: "MyIngress.ipv4_lpm"
     alias: "ipv4_lpm"
   }
@@ -14,33 +14,175 @@ tables {
     match_type: LPM
   }
   action_refs {
-    id: 16799317
+    id: 28792405
   }
   action_refs {
-    id: 16805608
+    id: 25652968
   }
   action_refs {
-    id: 16800567
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 49339629
+    name: "MyIngress.ipv4_lpm_bis"
+    alias: "ipv4_lpm_bis"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: LPM
+  }
+  action_refs {
+    id: 28792405
+  }
+  action_refs {
+    id: 25652968
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 34132580
+    name: "MyIngress.ipv4_lpm_tris"
+    alias: "ipv4_lpm_tris"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: LPM
+  }
+  action_refs {
+    id: 28792405
+  }
+  action_refs {
+    id: 25652968
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 33757179
+    name: "MyIngress.ipv4_exact"
+    alias: "ipv4_exact"
+  }
+  match_fields {
+    id: 1
+    name: "hdr.ipv4.dstAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "hdr.ipv4.srcAddr"
+    bitwidth: 32
+    match_type: EXACT
+  }
+  action_refs {
+    id: 28792405
+  }
+  action_refs {
+    id: 25652968
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 49270449
+    name: "MyIngress.check_ports"
+    alias: "check_ports"
+  }
+  match_fields {
+    id: 1
+    name: "standard_metadata.ingress_port"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "standard_metadata.egress_spec"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  action_refs {
+    id: 23938400
+  }
+  action_refs {
+    id: 21257015
+  }
+  size: 1024
+}
+tables {
+  preamble {
+    id: 48726943
+    name: "MyIngress.check_ports_bis"
+    alias: "check_ports_bis"
+  }
+  match_fields {
+    id: 1
+    name: "standard_metadata.ingress_port"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  match_fields {
+    id: 2
+    name: "standard_metadata.egress_spec"
+    bitwidth: 9
+    match_type: EXACT
+  }
+  action_refs {
+    id: 23938400
+  }
+  action_refs {
+    id: 21257015
   }
   size: 1024
 }
 actions {
   preamble {
-    id: 16800567
+    id: 21257015
     name: "NoAction"
     alias: "NoAction"
+    annotations: "@noWarn(\"unused\")"
   }
 }
 actions {
   preamble {
-    id: 16805608
+    id: 25652968
     name: "MyIngress.drop"
     alias: "drop"
   }
 }
 actions {
   preamble {
-    id: 16799317
+    id: 32760417
+    name: "MyIngress.send_to_controller"
+    alias: "send_to_controller"
+  }
+}
+actions {
+  preamble {
+    id: 25892681
+    name: "MyIngress.compute_hashes"
+    alias: "compute_hashes"
+  }
+}
+actions {
+  preamble {
+    id: 28792405
     name: "MyIngress.ipv4_forward"
     alias: "ipv4_forward"
   }
@@ -57,14 +199,19 @@ actions {
 }
 actions {
   preamble {
-    id: 16835169
-    name: "MyIngress.send_to_controller"
-    alias: "send_to_controller"
+    id: 23938400
+    name: "MyIngress.set_direction"
+    alias: "set_direction"
+  }
+  params {
+    id: 1
+    name: "dir"
+    bitwidth: 1
   }
 }
 controller_packet_metadata {
   preamble {
-    id: 67170915
+    id: 80671331
     name: "packet_in"
     alias: "packet_in"
     annotations: "@controller_header(\"packet_in\")"
@@ -82,7 +229,7 @@ controller_packet_metadata {
 }
 controller_packet_metadata {
   preamble {
-    id: 67135753
+    id: 75327753
     name: "packet_out"
     alias: "packet_out"
     annotations: "@controller_header(\"packet_out\")"
@@ -97,6 +244,36 @@ controller_packet_metadata {
     name: "padding"
     bitwidth: 7
   }
+}
+registers {
+  preamble {
+    id: 372442416
+    name: "MyIngress.bloom_filter_1"
+    alias: "bloom_filter_1"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 4096
+}
+registers {
+  preamble {
+    id: 384163989
+    name: "MyIngress.bloom_filter_2"
+    alias: "bloom_filter_2"
+  }
+  type_spec {
+    bitstring {
+      bit {
+        bitwidth: 1
+      }
+    }
+  }
+  size: 4096
 }
 type_info {
 }
