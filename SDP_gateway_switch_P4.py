@@ -9,6 +9,7 @@ import threading
 import base64
 import binascii
 import hmac
+import time
 
 from scapy.all import *
 from hashlib import sha256
@@ -25,8 +26,10 @@ from p4.v1 import p4runtime_pb2
 ca_file = os.path.join(os.sys.path[0], "Certs/ca.crt")
 certfile = os.path.join(os.sys.path[0], "Certs/2.crt")
 keyfile = os.path.join(os.sys.path[0], "Certs/2.key")
+my_IP = "193.168.2.22"
+controller_IP = "192.168.3.33"
 
-# SDP sonstants
+# SDP constants
 SDP_COM_MAX_MSG_BLOCK_LEN = 16384
 SDP_MSG_MIN_LEN = 22
 CRED_UPDATE_INTERVAL = 7200
@@ -42,6 +45,7 @@ B64_RIJNDAEL_SALT_STR_LEN = 10
 FKO_SDP_ID_SIZE = 4
 SHA256_B64_LEN = 43
 RIJNDAEL_BLOCKSIZE = 16
+FIREWALL_TIMER = 30
 
 # Global variables
 controller_ready = 0
@@ -118,8 +122,7 @@ def add_padding(word):
 
 # ___*** simple_switch_grpc functions ***___
 
-def writeFirewallRules(egress_port, dst_eth_addr, dst_ip_addr):
-    # TODO ora rules fisse, implementa modifica dinamica in base agli accessi consentiti
+def writeRoutingRule(egress_port, dst_eth_addr, dst_ip_addr):
     te = sh.TableEntry('MyIngress.ipv4_lpm')(action = 'MyIngress.ipv4_forward')
     te.match['hdr.ipv4.dstAddr'] = (dst_ip_addr)
     te.action['dstAddr'] = (dst_eth_addr)
@@ -127,6 +130,53 @@ def writeFirewallRules(egress_port, dst_eth_addr, dst_ip_addr):
     te.insert()
     
     print("Installed table rule to IP " + str(dst_ip_addr) + " forwarding to switch port " + str(egress_port))
+    
+def writeRoutingRuleBis(egress_port, dst_eth_addr, dst_ip_addr):
+    te = sh.TableEntry('MyIngress.ipv4_lpm_bis')(action = 'MyIngress.ipv4_forward')
+    te.match['hdr.ipv4.dstAddr'] = (dst_ip_addr)
+    te.action['dstAddr'] = (dst_eth_addr)
+    te.action['port'] = (egress_port)
+    te.insert()
+    
+    print("Installed table rule for SYN-ACK to IP " + str(dst_ip_addr) + " forwarding to switch port " + str(egress_port))
+    
+def writeRoutingRuleTris(egress_port, dst_eth_addr, dst_ip_addr):
+    te = sh.TableEntry('MyIngress.ipv4_lpm_tris')(action = 'MyIngress.ipv4_forward')
+    te.match['hdr.ipv4.dstAddr'] = (dst_ip_addr)
+    te.action['dstAddr'] = (dst_eth_addr)
+    te.action['port'] = (egress_port)
+    te.insert()
+    
+    print("Installed table rule for TCP conntrack to " + str(dst_ip_addr) + " forwarding to switch port " + str(egress_port))
+
+def writeFirewallRule(egress_port, dst_eth_addr, dst_ip_addr, src_ip_addr):
+    te = sh.TableEntry('MyIngress.ipv4_exact')(action = 'MyIngress.ipv4_forward')
+    te.match['hdr.ipv4.dstAddr'] = (dst_ip_addr)
+    te.match['hdr.ipv4.srcAddr'] = (src_ip_addr)
+    te.action['dstAddr'] = (dst_eth_addr)
+    te.action['port'] = (egress_port)
+    te.insert()
+    
+    print("Installed table rule to IP " + str(dst_ip_addr) + " from IP " + str(src_ip_addr))
+
+def removeFirewallRule(src_ip_addr):
+    te = sh.TableEntry('MyIngress.ipv4_exact')(action = 'MyIngress.ipv4_forward')
+    te.read(function=lambda x: x.delete())
+    print("Timeout, removing all tables rules from IP " + str(src_ip_addr))
+    
+def firewall_rule_timer():
+    print("starting timer")
+    time.sleep(FIREWALL_TIMER)
+    
+def checkPortsSetting(table, ingress_port, egress_port, direction):
+    te = sh.TableEntry(table)(action = 'MyIngress.set_direction')
+    te.match['standard_metadata.ingress_port'] = (ingress_port)
+    te.match['standard_metadata.egress_spec'] = (egress_port)
+    te.action['dir'] = (direction)
+    te.insert()
+    
+    print("Installed port direction " + str(direction) + " on table " + str(table))
+    print(" from port " + str(ingress_port) + " to port " + str(egress_port))
 
 
 # ___*** SPA functions ***___
@@ -198,14 +248,16 @@ def parse_spa_packet(spa_message, source, destination):
     print(digest_list)
 
     #SDP ID check
+    found = False
     for a in access_list:
         if a.sdp_id == spa_obj.sdp_id:
             print("[SPA] Match found for the SDP ID in access database")
             curr_stanza = a
+            found = True
             break
-        else:
-            print("[SPA] Not an authorized SDP ID")
-            return #SPA_FROM_UNAUTH_SDPID
+    if(found == False):
+        print("[SPA] Not an authorized SDP ID")
+        return #SPA_FROM_UNAUTH_SDPID
 
     #IMPLEMENT IP CHECK (current ANY)
 
@@ -310,8 +362,8 @@ def parse_spa_packet(spa_message, source, destination):
             
     print("[SPA] SDP ID " + str(spa_obj.sdp_id) + " is allowed to access service/s: " + str(allowed_serv))
 
-    return
-    # TODO implementa valori return
+    return allowed_serv
+
 
 # ___*** SDP functions ***___
 
@@ -350,7 +402,7 @@ def access_refresh_req(curr_sock, server_info, msg_cnt):
         
 def keep_alive_req(curr_sock, server_info, msg_cnt):
     if (dt.datetime.now() >= last_contact + dt.timedelta(seconds=DEFAULT_INTERVAL_KEEP_ALIVE_SECONDS)):
-        print("Sensing keepalive.")
+        print("Sending keepalive.")
         send_message(curr_sock,'keep_alive',None)
         client_state = "keep_alive"
         check_inbox(msg_cnt, 1, curr_sock, server_info)
@@ -642,13 +694,26 @@ def main():
     
     print("Writing switch startup table rules")
     
-    writeFirewallRules(egress_port="0", dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
+    writeRoutingRule(egress_port="0", dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
+    writeRoutingRule(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.2.22")
+    writeRoutingRule(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.4.44")
+    writeRoutingRule(egress_port="2", dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
+    writeRoutingRuleBis(egress_port="0", dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
+    writeRoutingRuleBis(egress_port="2", dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
+    writeRoutingRuleTris(egress_port="0", dst_eth_addr="08:00:27:c1:60:c1", dst_ip_addr="192.168.1.11")
+    writeRoutingRuleTris(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.2.22")
+    writeRoutingRuleTris(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.4.44")
+    writeRoutingRuleTris(egress_port="2", dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
     
-    writeFirewallRules(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.2.22")
-    
-    writeFirewallRules(egress_port="1", dst_eth_addr="08:00:27:cc:9a:c9", dst_ip_addr="192.168.4.44")
-    
-    writeFirewallRules(egress_port="2", dst_eth_addr="08:00:27:88:f8:9b", dst_ip_addr="192.168.3.33")
+    checkPortsSetting(table="MyIngress.check_ports", ingress_port="1", egress_port="0", direction="0")
+    checkPortsSetting(table="MyIngress.check_ports", ingress_port="1", egress_port="2", direction="0")
+    checkPortsSetting(table="MyIngress.check_ports_bis", ingress_port="1", egress_port="0", direction="0")
+    checkPortsSetting(table="MyIngress.check_ports_bis", ingress_port="1", egress_port="2", direction="0")
+    checkPortsSetting(table="MyIngress.check_ports", ingress_port="0", egress_port="1", direction="1")
+    checkPortsSetting(table="MyIngress.check_ports", ingress_port="2", egress_port="1", direction="1")
+    checkPortsSetting(table="MyIngress.check_ports_bis", ingress_port="0", egress_port="1", direction="1")
+    checkPortsSetting(table="MyIngress.check_ports_bis", ingress_port="2", egress_port="1", direction="1")
+
 
 
     # ** setting socket to controller
@@ -691,7 +756,8 @@ def main():
     
     # ** listen for SPA messages
     
-    connection = sh.client        
+    connection = sh.client
+    
     while True:
         print("[SPA] Listening for SPA message")
         curr_packet = connection.stream_in_q.get()
@@ -714,9 +780,27 @@ def main():
         
         print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
         
-        parse_spa_packet(spa_payload, src, dst)
+        # thread_list = []
         
-        # TODO Imposta firewall rules
+        if(curr_ip[IP].haslayer(UDP) == 1):
+            allowed = parse_spa_packet(curr_ip[UDP].payload.load, src, dst)
+            print(allowed)
+            for a in allowed:
+                for s in services:
+                    if (a == str(s.service_id)):
+                        dst_ip = str(s.nat_ip)
+                        print("Allowing connection to service " + str(s.service_id))
+                        writeFirewallRule("1", "08:00:27:cc:9a:c9", dst_ip, src)
+                        # t = threading.Thread(target = firewall_rule_timer, args=())
+                        # thread_list.append(t)
+                        break
+            # for thread in thread_list:
+            #    thread.start()
+            # for thread in thread_list:
+            #     thread.join()
+            time.sleep(FIREWALL_TIMER)
+            removeFirewallRule(src)
+        else: print("UDP not found")
 
 if __name__ == "__main__":
     main()
