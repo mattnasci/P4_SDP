@@ -159,14 +159,20 @@ def writeFirewallRule(egress_port, dst_eth_addr, dst_ip_addr, src_ip_addr):
     
     print("Installed table rule to IP " + str(dst_ip_addr) + " from IP " + str(src_ip_addr))
 
-def removeFirewallRule(src_ip_addr):
+def removeFirewallRule(src_ip_addr, dst_ip_addr):
     te = sh.TableEntry('MyIngress.ipv4_exact')(action = 'MyIngress.ipv4_forward')
-    te.read(function=lambda x: x.delete())
-    print("Timeout, removing all tables rules from IP " + str(src_ip_addr))
+    te.match['hdr.ipv4.dstAddr'] = (dst_ip_addr)
+    te.match['hdr.ipv4.srcAddr'] = (src_ip_addr)
+    rte = te.read()
+    for e in rte:
+        e.delete()
+
+    print("Timeout, removing table rule from IP " + str(src_ip_addr) + " to IP " + str(dst_ip_addr))
     
-def firewall_rule_timer():
+def firewall_rule_timer(src, dst_ip):
     print("starting timer")
     time.sleep(FIREWALL_TIMER)
+    removeFirewallRule(src, dst_ip)
     
 def checkPortsSetting(table, ingress_port, egress_port, direction):
     te = sh.TableEntry(table)(action = 'MyIngress.set_direction')
@@ -780,7 +786,7 @@ def main():
         
         print("Received UDP packet from IP: " + str(src) + " to IP " + str(dst))
         
-        # thread_list = []
+        thread_list = []
         
         if(curr_ip[IP].haslayer(UDP) == 1):
             allowed = parse_spa_packet(curr_ip[UDP].payload.load, src, dst)
@@ -791,15 +797,12 @@ def main():
                         dst_ip = str(s.nat_ip)
                         print("Allowing connection to service " + str(s.service_id))
                         writeFirewallRule("1", "08:00:27:cc:9a:c9", dst_ip, src)
-                        # t = threading.Thread(target = firewall_rule_timer, args=())
-                        # thread_list.append(t)
+                        t = threading.Thread(target = firewall_rule_timer, args=(src, dst_ip))
+                        thread_list.append(t)
                         break
-            # for thread in thread_list:
-            #    thread.start()
-            # for thread in thread_list:
-            #     thread.join()
-            time.sleep(FIREWALL_TIMER)
-            removeFirewallRule(src)
+            for thread in thread_list:
+                thread.start()
+
         else: print("UDP not found")
 
 if __name__ == "__main__":
